@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Lisfy</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="mask-icon" href="/static/safari-pinned-tab.svg" color="#5bbad5">
+    <meta name="theme-color" content="#3F51B5">
+    <meta name="Description" content="Easy to use file exchange app">
+    <script defer src="/static/js/app.js"></script>
+</head>
+
+<body>
+    <div class="app-layout">
+        <!--Header-->
+        <header class="toolbar">
+            <button class="toolbar-button pull-left disabled icon arrow-back-white" id="back-button"></button>
+            <button class="toolbar-button pull-right icon refresh-white" id="refresh-button"></button>
+            <!-- <button class="toolbar-button pull-right icon search-white" id="search-button"></button> -->
+            <div class="location" id="location">{{.}}</div>
+            <div class="searchbar" id="searchbar">
+                <div class="searchbar-content">
+                    <button class="toolbar-button pull-right icon close-black" id="close-searchbar-button"></button>
+                    <div class="search-input-conteiner">
+                        <input type="search" id="search-input" />
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!--Main content-->
+        <main class="page-content">
+            <ul class="files-list" id="files-list">
+            </ul>
+        </main>
+
+        <!--Notification-->
+        <div id="modal" class="modal">
+            <div class="modal-content">
+                <p></p>
+                <button class="flat-button pull-right">OK</button>
+                <div class="clear"></div>
+            </div>
+        </div>
+
+        <!--File input-->
+        <form name="input-form">
+            <label for="file-input" class="add-button">+</label>
+            <input type="file" id="file-input" name="uploadfile" />
+        </form>
+
+        <!-- Bottom panel -->
+        <div class="bottom-panel" id="bottom-panel">
+            <div class="upload-info">
+              <div class="progress" id="progress"></div>
+              <div class="label">Uploading:</div>
+              <div class="label" id="upload-file-name"></div>
+              <br/>
+              <button class="flat-button pull-right" onclick="uploader.abort()">CANCEL</button>
+            </div>
+        </div>
+        
+    </div>
+    
+    <script>
+        window.addEventListener("DOMContentLoaded", ready);
+
+        function ready() {
+            app.readDir(app.location.innerText);
+        };
+    </script>
+</body>
+
+</html>
