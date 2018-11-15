@@ -7,7 +7,7 @@ import (
 
 func main() {
 	addr := flag.String("http", ":7777", "listen address")
-	root := flag.String("root", ".", "set file server root directory")
+	root := flag.String("root", homedir(), "set file server root directory")
 
 	flag.Parse()
 

@@ -144,3 +144,10 @@ func respondWithJSON(w http.ResponseWriter, data interface{}) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	return json.NewEncoder(w).Encode(data)
 }
+
+func homedir() string {
+	if home, ok := os.LookupEnv("HOME"); ok {
+		return home
+	}
+	return "."
+}
