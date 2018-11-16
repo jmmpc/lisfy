@@ -90,7 +90,7 @@ func TestDirHandler(t *testing.T) {
 }
 
 func TestMethods(t *testing.T) {
-	ts := httptest.NewServer(newServer("/home/victor/"))
+	ts := httptest.NewServer(newServer(":8080", "/home/victor/").router)
 	defer ts.Close()
 
 	testMethods(t, ts.URL+"/", http.MethodGet)
