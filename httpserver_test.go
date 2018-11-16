@@ -50,7 +50,7 @@ func TestDirHandler(t *testing.T) {
 		contentType string
 	}{
 		{name: "no such dir", path: "/djfeuhws", err: "internal server error", status: http.StatusInternalServerError, contentType: "text/plain"},
-		{name: "success", path: "/Downloads", err: "", status: http.StatusOK, contentType: jsonContentType},
+		{name: "success", path: homedir(), err: "", status: http.StatusOK, contentType: jsonContentType},
 	}
 
 	for _, tc := range tt {
@@ -61,7 +61,7 @@ func TestDirHandler(t *testing.T) {
 			}
 
 			rr := httptest.NewRecorder()
-			dirHandler("/home/victor/").ServeHTTP(rr, req)
+			dirHandler(homedir()).ServeHTTP(rr, req)
 
 			res := rr.Result()
 			defer res.Body.Close()
@@ -90,7 +90,7 @@ func TestDirHandler(t *testing.T) {
 }
 
 func TestMethods(t *testing.T) {
-	ts := httptest.NewServer(newServer(":8080", "/home/victor/").router)
+	ts := httptest.NewServer(newServer(":8080", homedir()).router)
 	defer ts.Close()
 
 	testMethods(t, ts.URL+"/", http.MethodGet)
