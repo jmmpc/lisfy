@@ -119,13 +119,9 @@ func uploadHandler(root string) http.HandlerFunc {
 }
 
 func serveFile(root string) http.HandlerFunc {
+	server := http.FileServer(http.Dir(root))
 	return func(w http.ResponseWriter, r *http.Request) {
-		if containsDotDot(r.URL.Path) || r.URL.Path == "" {
-			http.Error(w, "invalid URL path", http.StatusBadRequest)
-			return
-		}
-		filename := filepath.Join(root, filepath.FromSlash(r.URL.Path))
-		log.Printf("Client %s requested the file \"%s\"\n", r.RemoteAddr, filename)
-		http.ServeFile(w, r, filename)
+		log.Printf("Client %s requested the file \"%s\"\n", r.RemoteAddr, r.URL.Path)
+		server.ServeHTTP(w, r)
 	}
 }
