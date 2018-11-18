@@ -119,9 +119,13 @@ func uploadHandler(root string) http.HandlerFunc {
 }
 
 func serveFile(root string) http.HandlerFunc {
-	server := http.FileServer(http.Dir(root))
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("Client %s requested the file \"%s\"\n", r.RemoteAddr, r.URL.Path)
-		server.ServeHTTP(w, r)
+		filename := filepath.Join(root, filepath.FromSlash(r.URL.Path))
+		log.Printf("Client %s requested the file \"%s\"\n", r.RemoteAddr, filename)
+		if dir, err := isdir(filename); dir || err != nil {
+			http.Error(w, "no such file", http.StatusNotFound)
+			return
+		}
+		http.ServeFile(w, r, filename)
 	}
 }

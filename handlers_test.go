@@ -133,8 +133,8 @@ func TestServeFileHandler(t *testing.T) {
 		status      int
 		contentType string
 	}{
-		{name: "no such file", path: "/djfeuhws", err: "404 page not found", status: http.StatusNotFound, contentType: ContentTypePlain},
-		{name: "root dir is requested", path: "", err: "", status: http.StatusOK, contentType: ContentTypeHTML},
+		{name: "no such file", path: "/djfeuhws", err: "no such file", status: http.StatusNotFound, contentType: ContentTypePlain},
+		{name: "root dir is requested", path: "", err: "no such file", status: http.StatusNotFound, contentType: ContentTypePlain},
 	}
 
 	for _, tc := range tt {
