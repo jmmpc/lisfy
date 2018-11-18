@@ -151,3 +151,16 @@ func homedir() string {
 	}
 	return "."
 }
+
+func isdir(name string) (bool, error) {
+	info, err := os.Stat(name)
+	if err != nil {
+		return false, err
+	}
+
+	if info.IsDir() {
+		return true, nil
+	}
+
+	return false, nil
+}
