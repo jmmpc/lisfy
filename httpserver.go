@@ -12,12 +12,14 @@ import (
 type server struct {
 	router *mux.Router
 	root   string
+	addr   string
 }
 
-func newServer(root string) *server {
+func newServer(addr, root string) *server {
 	s := &server{
 		router: mux.NewRouter(),
 		root:   root,
+		addr:   addr,
 	}
 	s.routes()
 	return s
@@ -31,15 +33,12 @@ func (s *server) routes() {
 	s.router.PathPrefix("/upload/").Handler(http.StripPrefix("/upload/", uploadHandler(s.root))).Methods("POST")
 }
 
-func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	s.router.ServeHTTP(w, r)
-}
-
-func run(addr, path string) error {
-	root, err := filepath.Abs(path)
+func (s *server) run() error {
+	root, err := filepath.Abs(s.root)
 	if err != nil {
 		return err
 	}
+
 	log.Printf("Serving %s\n", root)
-	return http.ListenAndServe(addr, newServer(root))
+	return http.ListenAndServe(s.addr, s.router)
 }
