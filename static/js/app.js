@@ -4,18 +4,6 @@
 class Uploader {
     constructor() {
         this.req = new XMLHttpRequest;
-
-        var self = this;
-        document.getElementById("file-input").addEventListener("change", function () {
-            if (this.value === "") {
-                return;
-            }
-
-            if (this.files[0]) {
-                self.upload(this.files[0]);
-            }
-            this.value = "";
-        });
     }
 
     abort() {
@@ -128,9 +116,19 @@ var app = {
     refreshButton: document.getElementById("refresh-button"),
     location: document.getElementById("location"),
     fileinput: document.getElementById("file-input"),
-    searchInput: document.getElementById("search-input"),
+    // searchInput: document.getElementById("search-input"),
     bottomPanel: document.getElementById("bottom-panel"),
-    filesList: new FilesList()
+    filesList: new FilesList(),
+    camera: document.getElementById("camera")
+}
+
+app.fileinput.addEventListener("change", handleFileInput);
+app.camera.addEventListener("change", handleFileInput);
+
+function handleFileInput(e) {
+    var file = e.currentTarget.files[0];
+    if (file) { uploader.upload(file) }
+    e.currentTarget.value = "";
 }
 
 app.goBack = function () {

@@ -21,17 +21,23 @@
         <!--Header-->
         <header class="toolbar">
             <button class="toolbar-button pull-left disabled icon arrow-back-white" id="back-button"></button>
+            <form name="photo-input-form" class="pull-right toolbar-button icon add-a-photo">
+                <label for="camera" class="fill-parent"></label>
+                <input type="file" id="camera" accept="image/*" capture>
+            </form>
+            <!-- <button class="toolbar-button pull-right icon add-a-photo" id="add-a-photo-button"></button> -->
             <button class="toolbar-button pull-right icon refresh-white" id="refresh-button"></button>
             <!-- <button class="toolbar-button pull-right icon search-white" id="search-button"></button> -->
             <div class="location" id="location">{{.}}</div>
-            <div class="searchbar" id="searchbar">
+            
+            <!-- <div class="searchbar" id="searchbar">
                 <div class="searchbar-content">
                     <button class="toolbar-button pull-right icon close-black" id="close-searchbar-button"></button>
                     <div class="search-input-conteiner">
                         <input type="search" id="search-input" />
                     </div>
                 </div>
-            </div>
+            </div> -->
         </header>
 
         <!--Main content-->

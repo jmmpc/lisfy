@@ -47,6 +47,8 @@ input, button, textarea {
 
 .pull-left { float: left; }
 
+.fill-parent { display: inline-block; width: 100%; height: 100%; }
+
 .clear { clear: both; }
 
 html, body {
@@ -104,6 +106,10 @@ html, body {
     text-overflow: ellipsis;
     /* direction: rtl; swap slashes!*/ 
     text-align: left;
+}
+
+.toolbar-button label {
+    cursor: pointer;
 }
 
 .searchbar {
@@ -235,6 +241,10 @@ input[type="search"]:focus {
 
 .icon.close-black {
     background-image: url(/static/img/close_black.svg);
+}
+
+.icon.add-a-photo {
+    background-image: url(/static/img/add_a_photo-24px.svg);
 }
 
 .modal {
