@@ -54,7 +54,7 @@ func ReadDir(dirname string) ([]*FileInfo, error) {
 	return fileInfoList, err
 }
 
-func ReadDirFunc(dirname string, f func(info *FileInfo) bool) ([]*FileInfo, error) {
+func ReadDirFunc(dirname string, f func(info os.FileInfo) bool) ([]*FileInfo, error) {
 	fis, err := ReadDir(dirname)
 	if err != nil {
 		return nil, err
@@ -77,7 +77,7 @@ func push(pusher http.Pusher, resources ...string) {
 }
 
 func readdir(dirname string) ([]*FileInfo, error) {
-	fis, err := ReadDirFunc(dirname, func(info *FileInfo) bool {
+	fis, err := ReadDirFunc(dirname, func(info os.FileInfo) bool {
 		if len(info.Name()) != 0 && info.Name()[0] == '.' {
 			return false
 		}
@@ -113,17 +113,17 @@ func makeUnique(filename string) string {
 	return name + "_" + time.Now().Format("2006-01-02_150405") + ext
 }
 
-// localIP returns current device local ip address and error if any.
-func localIP() (net.IP, error) {
+// localIP returns the string form of the current device local ip address and error if any.
+func localIP() (string, error) {
 	conn, err := net.Dial("udp", "8.8.8.8:80")
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	defer conn.Close()
 
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
 
-	return localAddr.IP, nil
+	return localAddr.IP.String(), nil
 }
 
 func containsDotDot(v string) bool {
