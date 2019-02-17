@@ -50,29 +50,30 @@ func dirHandler(dirname string) http.HandlerFunc {
 
 		stat, err := os.Stat(filename)
 		switch {
-		case err != nil:
+		case os.IsNotExist(err):
 			log.Printf("failed to read file stat: %v\n", err)
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusNoContent)
+		case os.IsPermission(err):
+			log.Printf("failed to read file stat: %v\n", err)
+			http.Error(w, err.Error(), http.StatusForbidden)
 		case stat.IsDir():
-			stats, err := readdir(filename)
-			if err != nil {
-				log.Printf("failed to read dir: %v\n", err)
-				http.Error(w, "internal server error", http.StatusInternalServerError)
-				return
-			}
+			stats, _ := readdir(filename)
+			// if err != nil {
+			// 	log.Printf("failed to read dir: %v\n", err)
+			// 	http.Error(w, "internal server error", http.StatusInternalServerError)
+			// 	return
+			// }
 			if err := respondWithJSON(w, stats); err != nil {
 				log.Printf("failed to marshal json: %v\n", err)
 				http.Error(w, "internal server error", http.StatusInternalServerError)
-				return
 			}
 		case stat.Mode().IsRegular():
 			if err := respondWithJSON(w, Marshaler(stat)); err != nil {
 				log.Printf("failed to marshal json: %v\n", err)
 				http.Error(w, "internal server error", http.StatusInternalServerError)
-				return
 			}
 		default:
-			http.Error(w, "access denied", http.StatusForbidden)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
 		}
 	}
 }
