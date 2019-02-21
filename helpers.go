@@ -81,6 +81,9 @@ func readdir(dirname string) ([]*FileInfo, error) {
 		if len(info.Name()) != 0 && info.Name()[0] == '.' {
 			return false
 		}
+		if !info.Mode().IsRegular() && !info.IsDir() {
+			return false
+		}
 		return true
 	})
 	if err != nil {

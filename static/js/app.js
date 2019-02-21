@@ -3,7 +3,7 @@
 // ##################################################################
 class Uploader {
     constructor() {
-        this.req = new XMLHttpRequest;
+        this.req = new XMLHttpRequest();
     }
 
     abort() {
@@ -18,7 +18,7 @@ class Uploader {
 
         this.req.upload.onprogress = function(e) {
             progress.innerText = Math.round((e.loaded*100)/e.total) + "%";
-        }
+        };
 
         this.req.onload = function() {
             if (this.status == 200) {
@@ -28,11 +28,11 @@ class Uploader {
             }
     
             hide(app.bottomPanel);
-        }
+        };
 
         this.req.onerror = function () {
             notifier.showMessage("Connection error: check your network connection.");
-        }
+        };
 
         var path = "";
         if (app.location.innerText == "/") {
@@ -120,14 +120,14 @@ var app = {
     bottomPanel: document.getElementById("bottom-panel"),
     filesList: new FilesList(),
     camera: document.getElementById("camera")
-}
+};
 
 app.fileinput.addEventListener("change", handleFileInput);
 app.camera.addEventListener("change", handleFileInput);
 
 function handleFileInput(e) {
     var file = e.currentTarget.files[0];
-    if (file) { uploader.upload(file) }
+    if (file) { uploader.upload(file); }
     e.currentTarget.value = "";
 }
 
@@ -137,11 +137,11 @@ app.goBack = function () {
 
 app.refresh = function () {
     app.readDir(app.location.innerText);
-}
+};
 
 app.location.addEventListener("click", function() {
     notifier.showMessage(this.innerText);
-})
+});
 app.backButton.addEventListener("click", app.goBack);
 app.refreshButton.addEventListener("click", app.refresh);
 
@@ -164,15 +164,15 @@ app.readDir = function (dirname) {
         } else {
             notifier.showMessage(req.responseText);
         }
-    }
+    };
 
     req.onerror = function () {
         notifier.showMessage("Connection error: check your network connection.");
-    }
+    };
 
     req.open("GET", "/files"+dirname);
     req.send();
-}
+};
 
 // ##################################################################
 // Misc
@@ -185,12 +185,12 @@ function show(element) {
     element.style.display = "initial";
 }
 
-function trimPrefix(s, prefix) {
-    if (s.startsWith(prefix)) {
-        return s.slice(prefix.length)
-    }
-    return s
-}
+// function trimPrefix(s, prefix) {
+//     if (s.startsWith(prefix)) {
+//         return s.slice(prefix.length);
+//     }
+//     return s;
+// }
 
 function dir(path) {
     var i = path.lastIndexOf("/");
@@ -203,7 +203,7 @@ function dir(path) {
 var values = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
 
 function sizeFunc(sizeInBytes) {
-    var i = 0;;
+    var i = 0;
     while (sizeInBytes >= 1024) {
         sizeInBytes /= 1024;
         i++;

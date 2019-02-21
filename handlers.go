@@ -58,11 +58,6 @@ func dirHandler(dirname string) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusForbidden)
 		case stat.IsDir():
 			stats, _ := readdir(filename)
-			// if err != nil {
-			// 	log.Printf("failed to read dir: %v\n", err)
-			// 	http.Error(w, "internal server error", http.StatusInternalServerError)
-			// 	return
-			// }
 			if err := respondWithJSON(w, stats); err != nil {
 				log.Printf("failed to marshal json: %v\n", err)
 				http.Error(w, "internal server error", http.StatusInternalServerError)
