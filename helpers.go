@@ -9,6 +9,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 )
 
 type FileInfo struct {
@@ -96,10 +98,37 @@ func readdir(dirname string) ([]*FileInfo, error) {
 		} else if !fis[i].IsDir() && fis[j].IsDir() {
 			return false
 		}
-		return strings.ToLower(fis[i].Name()) < strings.ToLower(fis[j].Name())
+		// return strings.ToLower(fis[i].Name()) < strings.ToLower(fis[j].Name())
+		return less(fis[i].Name(), fis[j].Name())
 	})
 
 	return fis, nil
+}
+
+func less(s1, s2 string) bool {
+	for s1 != "" && s2 != "" {
+		r1, size1 := utf8.DecodeRuneInString(s1)
+		r2, size2 := utf8.DecodeRuneInString(s2)
+		s1 = s1[size1:]
+		s2 = s2[size2:]
+
+		if r1 == r2 {
+			continue
+		}
+
+		r1 = unicode.ToLower(r1)
+		r2 = unicode.ToLower(r2)
+
+		if r1 != r2 {
+			return r1 < r2
+		}
+	}
+
+	if s1 == "" && s2 != "" {
+		return true
+	}
+
+	return false
 }
 
 func isExist(filename string) bool {

@@ -23,12 +23,9 @@ func indexHandler(filename string) http.HandlerFunc {
 				"static/img/file_24px.svg",
 				"static/img/folder_24px.svg",
 				"static/img/refresh_white.svg",
-				// "static/img/search_white.svg",
 				"static/img/arrow_back_white.svg",
 			)
 		}
-
-		// w.Header().Set("Content-Type", "text/html")
 
 		if err := index.Execute(w, r.URL.Path); err != nil {
 			http.Error(w, "Something went wrong. Try again later.", http.StatusInternalServerError)
