@@ -37,49 +37,37 @@ func Marshaler(info os.FileInfo) json.Marshaler {
 	return FileInfo{info}
 }
 
-func ReadDir(dirname string) ([]*FileInfo, error) {
+func readDirMap(dirname string, mapping func(info os.FileInfo) bool) ([]*FileInfo, error) {
 	f, err := os.Open(dirname)
 	if err != nil {
 		return nil, err
 	}
-	list, err := f.Readdir(-1)
-	f.Close()
-	if err != nil {
+	list, _ := f.Readdir(-1)
+	if err := f.Close(); err != nil {
 		return nil, err
 	}
 
-	fileInfoList := make([]*FileInfo, 0, len(list))
+	var fileInfoList []*FileInfo
 	for _, info := range list {
-		fileInfoList = append(fileInfoList, &FileInfo{info})
-	}
-
-	return fileInfoList, err
-}
-
-func ReadDirFunc(dirname string, f func(info os.FileInfo) bool) ([]*FileInfo, error) {
-	fis, err := ReadDir(dirname)
-	if err != nil {
-		return nil, err
-	}
-
-	var l []*FileInfo
-	for _, fi := range fis {
-		if f(fi) {
-			l = append(l, fi)
+		if mapping(info) {
+			fileInfoList = append(fileInfoList, &FileInfo{info})
 		}
 	}
-	return l, nil
-}
 
-// push used for http/2 responses.
-func push(pusher http.Pusher, resources ...string) {
-	for _, res := range resources {
-		pusher.Push(res, nil)
-	}
+	sort.SliceStable(fileInfoList, func(i, j int) bool {
+		if fileInfoList[i].IsDir() && !fileInfoList[j].IsDir() {
+			return true
+		} else if !fileInfoList[i].IsDir() && fileInfoList[j].IsDir() {
+			return false
+		}
+		return less(fileInfoList[i].Name(), fileInfoList[j].Name())
+	})
+
+	return fileInfoList, nil
 }
 
 func readdir(dirname string) ([]*FileInfo, error) {
-	fis, err := ReadDirFunc(dirname, func(info os.FileInfo) bool {
+	return readDirMap(dirname, func(info os.FileInfo) bool {
 		if len(info.Name()) != 0 && info.Name()[0] == '.' {
 			return false
 		}
@@ -88,23 +76,77 @@ func readdir(dirname string) ([]*FileInfo, error) {
 		}
 		return true
 	})
-	if err != nil {
-		return nil, err
-	}
-
-	sort.SliceStable(fis, func(i, j int) bool {
-		if fis[i].IsDir() && !fis[j].IsDir() {
-			return true
-		} else if !fis[i].IsDir() && fis[j].IsDir() {
-			return false
-		}
-		// return strings.ToLower(fis[i].Name()) < strings.ToLower(fis[j].Name())
-		return less(fis[i].Name(), fis[j].Name())
-	})
-
-	return fis, nil
 }
 
+// func ReadDir(dirname string) ([]*FileInfo, error) {
+// 	f, err := os.Open(dirname)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	list, err := f.Readdir(-1)
+// 	f.Close()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	fileInfoList := make([]*FileInfo, len(list))
+// 	for i, info := range list {
+// 		fileInfoList[i] = &FileInfo{info}
+// 	}
+
+// 	return fileInfoList, err
+// }
+
+// func ReadDirFunc(dirname string, f func(info os.FileInfo) bool) ([]*FileInfo, error) {
+// 	fis, err := ReadDir(dirname)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	var l []*FileInfo
+// 	for _, fi := range fis {
+// 		if f(fi) {
+// 			l = append(l, fi)
+// 		}
+// 	}
+// 	return l, nil
+// }
+
+// push used for http/2 responses.
+func push(pusher http.Pusher, resources ...string) {
+	for _, res := range resources {
+		pusher.Push(res, nil)
+	}
+}
+
+// func readdir(dirname string) ([]*FileInfo, error) {
+// 	fis, err := ReadDirFunc(dirname, func(info os.FileInfo) bool {
+// 		if len(info.Name()) != 0 && info.Name()[0] == '.' {
+// 			return false
+// 		}
+// 		if !info.Mode().IsRegular() && !info.IsDir() {
+// 			return false
+// 		}
+// 		return true
+// 	})
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	sort.SliceStable(fis, func(i, j int) bool {
+// 		if fis[i].IsDir() && !fis[j].IsDir() {
+// 			return true
+// 		} else if !fis[i].IsDir() && fis[j].IsDir() {
+// 			return false
+// 		}
+// 		// return strings.ToLower(fis[i].Name()) < strings.ToLower(fis[j].Name())
+// 		return less(fis[i].Name(), fis[j].Name())
+// 	})
+
+// 	return fis, nil
+// }
+
+// less reports whether s1 should sort before s2.
 func less(s1, s2 string) bool {
 	for s1 != "" && s2 != "" {
 		r1, size1 := utf8.DecodeRuneInString(s1)
