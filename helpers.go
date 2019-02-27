@@ -17,7 +17,7 @@ type FileInfo struct {
 	os.FileInfo
 }
 
-func (f FileInfo) MarshalJSON() ([]byte, error) {
+func (f *FileInfo) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		Name    string      `json:"name"`
 		Size    int64       `json:"size"`
@@ -33,8 +33,8 @@ func (f FileInfo) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func Marshaler(info os.FileInfo) json.Marshaler {
-	return FileInfo{info}
+func Marshaler(info os.FileInfo) *FileInfo {
+	return &FileInfo{info}
 }
 
 func readDirMap(dirname string, mapping func(info os.FileInfo) bool) ([]*FileInfo, error) {
@@ -42,8 +42,10 @@ func readDirMap(dirname string, mapping func(info os.FileInfo) bool) ([]*FileInf
 	if err != nil {
 		return nil, err
 	}
-	list, _ := f.Readdir(-1)
-	if err := f.Close(); err != nil {
+	list, err := f.Readdir(-1)
+	f.Close()
+
+	if err != nil && len(list) == 0 {
 		return nil, err
 	}
 
@@ -78,73 +80,12 @@ func readdir(dirname string) ([]*FileInfo, error) {
 	})
 }
 
-// func ReadDir(dirname string) ([]*FileInfo, error) {
-// 	f, err := os.Open(dirname)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	list, err := f.Readdir(-1)
-// 	f.Close()
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	fileInfoList := make([]*FileInfo, len(list))
-// 	for i, info := range list {
-// 		fileInfoList[i] = &FileInfo{info}
-// 	}
-
-// 	return fileInfoList, err
-// }
-
-// func ReadDirFunc(dirname string, f func(info os.FileInfo) bool) ([]*FileInfo, error) {
-// 	fis, err := ReadDir(dirname)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	var l []*FileInfo
-// 	for _, fi := range fis {
-// 		if f(fi) {
-// 			l = append(l, fi)
-// 		}
-// 	}
-// 	return l, nil
-// }
-
 // push used for http/2 responses.
 func push(pusher http.Pusher, resources ...string) {
 	for _, res := range resources {
 		pusher.Push(res, nil)
 	}
 }
-
-// func readdir(dirname string) ([]*FileInfo, error) {
-// 	fis, err := ReadDirFunc(dirname, func(info os.FileInfo) bool {
-// 		if len(info.Name()) != 0 && info.Name()[0] == '.' {
-// 			return false
-// 		}
-// 		if !info.Mode().IsRegular() && !info.IsDir() {
-// 			return false
-// 		}
-// 		return true
-// 	})
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	sort.SliceStable(fis, func(i, j int) bool {
-// 		if fis[i].IsDir() && !fis[j].IsDir() {
-// 			return true
-// 		} else if !fis[i].IsDir() && fis[j].IsDir() {
-// 			return false
-// 		}
-// 		// return strings.ToLower(fis[i].Name()) < strings.ToLower(fis[j].Name())
-// 		return less(fis[i].Name(), fis[j].Name())
-// 	})
-
-// 	return fis, nil
-// }
 
 // less reports whether s1 should sort before s2.
 func less(s1, s2 string) bool {
@@ -220,7 +161,11 @@ func respondWithJSON(w http.ResponseWriter, data interface{}) error {
 }
 
 func homedir() string {
-	if home, ok := os.LookupEnv("HOME"); ok {
+	// if home, ok := os.LookupEnv("HOME"); ok {
+	// 	return home
+	// }
+	// return "."
+	if home, err := os.UserHomeDir(); err == nil {
 		return home
 	}
 	return "."

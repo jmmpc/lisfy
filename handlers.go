@@ -116,7 +116,7 @@ func serveFile(root string) http.HandlerFunc {
 		filename := filepath.Join(root, filepath.FromSlash(r.URL.Path))
 		log.Printf("Client %s requested the file \"%s\"\n", r.RemoteAddr, filename)
 		if dir, err := isdir(filename); dir || err != nil {
-			http.Error(w, "no such file", http.StatusNotFound)
+			http.Error(w, "no such file", http.StatusNoContent)
 			return
 		}
 		http.ServeFile(w, r, filename)
