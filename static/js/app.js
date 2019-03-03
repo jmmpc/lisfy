@@ -116,7 +116,6 @@ var app = {
     refreshButton: document.getElementById("refresh-button"),
     location: document.getElementById("location"),
     fileinput: document.getElementById("file-input"),
-    // searchInput: document.getElementById("search-input"),
     bottomPanel: document.getElementById("bottom-panel"),
     filesList: new FilesList(),
     camera: document.getElementById("camera")

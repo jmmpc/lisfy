@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -33,26 +34,22 @@ func (f *FileInfo) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func Marshaler(info os.FileInfo) *FileInfo {
-	return &FileInfo{info}
-}
-
-func readDirMap(dirname string, mapping func(info os.FileInfo) bool) ([]*FileInfo, error) {
+func readDirMap(dirname string, mapping func(fi os.FileInfo) bool) ([]*FileInfo, error) {
 	f, err := os.Open(dirname)
 	if err != nil {
 		return nil, err
 	}
-	list, err := f.Readdir(-1)
+	fis, err := f.Readdir(-1)
 	f.Close()
 
-	if err != nil && len(list) == 0 {
+	if err != nil && len(fis) == 0 {
 		return nil, err
 	}
 
 	var fileInfoList []*FileInfo
-	for _, info := range list {
-		if mapping(info) {
-			fileInfoList = append(fileInfoList, &FileInfo{info})
+	for _, fi := range fis {
+		if mapping(fi) {
+			fileInfoList = append(fileInfoList, &FileInfo{fi})
 		}
 	}
 
@@ -69,11 +66,11 @@ func readDirMap(dirname string, mapping func(info os.FileInfo) bool) ([]*FileInf
 }
 
 func readdir(dirname string) ([]*FileInfo, error) {
-	return readDirMap(dirname, func(info os.FileInfo) bool {
-		if len(info.Name()) != 0 && info.Name()[0] == '.' {
+	return readDirMap(dirname, func(fi os.FileInfo) bool {
+		if len(fi.Name()) != 0 && fi.Name()[0] == '.' {
 			return false
 		}
-		if !info.Mode().IsRegular() && !info.IsDir() {
+		if !fi.Mode().IsRegular() && !fi.IsDir() {
 			return false
 		}
 		return true
@@ -81,9 +78,15 @@ func readdir(dirname string) ([]*FileInfo, error) {
 }
 
 // push used for http/2 responses.
-func push(pusher http.Pusher, resources ...string) {
+func push(pusher http.Pusher, opts *http.PushOptions, resources ...string) {
 	for _, res := range resources {
-		pusher.Push(res, nil)
+		err := pusher.Push(res, opts)
+		if err != nil {
+			log.Printf("Failed to push: %v", err)
+		}
+		if err == http.ErrNotSupported {
+			return
+		}
 	}
 }
 
@@ -114,7 +117,7 @@ func less(s1, s2 string) bool {
 	return false
 }
 
-func isExist(filename string) bool {
+func exist(filename string) bool {
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		return false
 	}
@@ -136,9 +139,9 @@ func localIP() (net.IP, error) {
 	}
 	defer conn.Close()
 
-	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	addr := conn.LocalAddr().(*net.UDPAddr)
 
-	return localAddr.IP, nil
+	return addr.IP, nil
 }
 
 func containsDotDot(v string) bool {
@@ -161,10 +164,6 @@ func respondWithJSON(w http.ResponseWriter, data interface{}) error {
 }
 
 func homedir() string {
-	// if home, ok := os.LookupEnv("HOME"); ok {
-	// 	return home
-	// }
-	// return "."
 	if home, err := os.UserHomeDir(); err == nil {
 		return home
 	}
@@ -172,12 +171,12 @@ func homedir() string {
 }
 
 func isdir(name string) (bool, error) {
-	info, err := os.Stat(name)
+	fi, err := os.Stat(name)
 	if err != nil {
 		return false, err
 	}
 
-	if info.IsDir() {
+	if fi.IsDir() {
 		return true, nil
 	}
 

@@ -18,6 +18,8 @@ func main() {
 		log.Printf("This device ip address: %s%s\n", ip, *addr)
 	}
 
+	log.SetPrefix(">----------------------->\n")
+
 	if err := newServer(*addr, *root).run(); err != nil {
 		log.Printf("could not start server: %v\n", err)
 	}

@@ -17,13 +17,19 @@ func indexHandler(filename string) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if pusher, ok := w.(http.Pusher); ok {
-			push(pusher,
+			options := &http.PushOptions{
+				Header: http.Header{
+					"Accept-Encoding": r.Header["Accept-Encoding"],
+				},
+			}
+			push(pusher, options,
 				"static/css/styles.css",
 				"static/js/app.js",
 				"static/img/file_24px.svg",
 				"static/img/folder_24px.svg",
 				"static/img/refresh_white.svg",
 				"static/img/arrow_back_white.svg",
+				"static/img/add_a_photo-24px.svg",
 			)
 		}
 
@@ -33,9 +39,9 @@ func indexHandler(filename string) http.HandlerFunc {
 	}
 }
 
-func dirHandler(dirname string) http.HandlerFunc {
-	if !isExist(dirname) {
-		log.Fatalf("dir %s is not exist", dirname)
+func dirHandler(root string) http.HandlerFunc {
+	if !exist(root) {
+		log.Fatalf("dir %s is not exist", root)
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		if containsDotDot(r.URL.Path) {
@@ -43,7 +49,7 @@ func dirHandler(dirname string) http.HandlerFunc {
 			return
 		}
 
-		filename := filepath.Join(dirname, filepath.FromSlash(r.URL.Path))
+		filename := filepath.Join(root, filepath.FromSlash(r.URL.Path))
 
 		stat, err := os.Stat(filename)
 		switch {
@@ -60,7 +66,7 @@ func dirHandler(dirname string) http.HandlerFunc {
 				http.Error(w, "internal server error", http.StatusInternalServerError)
 			}
 		case stat.Mode().IsRegular():
-			if err := respondWithJSON(w, Marshaler(stat)); err != nil {
+			if err := respondWithJSON(w, &FileInfo{stat}); err != nil {
 				log.Printf("failed to marshal json: %v\n", err)
 				http.Error(w, "internal server error", http.StatusInternalServerError)
 			}
@@ -86,9 +92,9 @@ func uploadHandler(root string) http.HandlerFunc {
 			return
 		}
 
-		p := progressreader.WithContext(r.Context(), r.Body)
+		pr := progressreader.WithContext(r.Context(), r.Body)
 
-		_, err = io.Copy(file, p)
+		_, err = io.Copy(file, pr)
 
 		if err := file.Close(); err != nil {
 			log.Printf("failed to close file: %v\n", err)
