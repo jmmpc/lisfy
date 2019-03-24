@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 
 	"github.com/jmmpc/lisfy/handler"
@@ -28,11 +30,11 @@ func main() {
 		log.Fatalf("%s is not exist\n", *root)
 	}
 
-	log.SetPrefix(">----------------------->\n")
+	log.SetPrefix("-------------------\n")
 
 	*root, err = filepath.Abs(*root)
 	if err != nil {
-		log.Fatalf("could not get absolute root path: %v\n", err)
+		log.Fatalf("could not get absolute path for root directory: %v\n", err)
 	}
 
 	log.Printf("Start serving files in %s\n", *root)
@@ -42,9 +44,25 @@ func main() {
 		Handler: handler.New(*root, "index.html"),
 	}
 
-	if err := server.ListenAndServe(); err != nil {
-		log.Printf("could not start server: %v\n", err)
+	idleConnsClosed := make(chan struct{})
+	go func() {
+		sigint := make(chan os.Signal, 1)
+		signal.Notify(sigint, os.Interrupt)
+		<-sigint
+
+		// We received an interrupt signal, shut down.
+		if err := server.Shutdown(context.Background()); err != nil {
+			// Error from closing listeners, or context timeout:
+			log.Printf("HTTP server Shutdown: %v", err)
+		}
+		close(idleConnsClosed)
+	}()
+
+	if err := server.ListenAndServe(); err != http.ErrServerClosed {
+		log.Printf("HTTP server ListenAndServe: %v", err)
 	}
+
+	<-idleConnsClosed
 }
 
 func localIP() (net.IP, error) {
