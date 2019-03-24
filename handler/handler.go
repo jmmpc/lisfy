@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"io"
 	"log"
 	"net/http"
@@ -35,21 +34,19 @@ type handler struct {
 	indexHTML string
 }
 
-// New returns an http handler.
+// New returns a handler for an http server.
 func New(root string, indexHTML string) http.Handler {
 	h := handler{root, indexHTML}
 	router := mux.NewRouter()
-	router.Handle("/", gzp.GzipHandler(handlerFunc(h.indexHandler))).Methods("GET")
+	router.Handle("/", gzp.GzipHandler(http.HandlerFunc(h.indexHandler))).Methods("GET")
 	router.PathPrefix("/files/").Handler(http.StripPrefix("/files/", handlerFunc(h.dirHandler))).Methods("GET")
-	router.PathPrefix("/download/").Handler(http.StripPrefix("/download/", http.HandlerFunc(h.serveFile))).Methods("GET")
-	router.PathPrefix("/static/").Handler(http.FileServer(http.Dir("."))).Methods("GET")
+	router.PathPrefix("/download/").Handler(http.StripPrefix("/download/", fileServer(h.root))).Methods("GET")
+	router.PathPrefix("/static/").Handler(fileServer(".")).Methods("GET")
 	router.PathPrefix("/upload/").Handler(http.StripPrefix("/upload/", handlerFunc(h.uploadHandler))).Methods("POST")
 	return router
 }
 
-func (h handler) indexHandler(w http.ResponseWriter, r *http.Request) (int, error) {
-	index := template.Must(template.ParseFiles(h.indexHTML))
-
+func (h handler) indexHandler(w http.ResponseWriter, r *http.Request) {
 	if pusher, ok := w.(http.Pusher); ok {
 		options := &http.PushOptions{
 			Header: http.Header{
@@ -67,11 +64,7 @@ func (h handler) indexHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		)
 	}
 
-	if err := index.Execute(w, r.URL.Path); err != nil {
-		log.Printf("Could not execute template: %v\n", err)
-		return http.StatusInternalServerError, fmt.Errorf("something went wrong, try again later")
-	}
-	return http.StatusOK, nil
+	http.ServeFile(w, r, h.indexHTML)
 }
 
 func (h handler) dirHandler(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -79,19 +72,23 @@ func (h handler) dirHandler(w http.ResponseWriter, r *http.Request) (int, error)
 		return http.StatusBadRequest, fmt.Errorf("invalid URL path")
 	}
 
-	filename := filepath.Join(h.root, filepath.FromSlash(r.URL.Path))
+	fullName := filepath.Join(h.root, r.URL.Path)
 
-	stat, err := os.Stat(filename)
+	stat, err := os.Stat(fullName)
 	switch {
 	case os.IsNotExist(err):
 		log.Printf("failed to read file stat: %v\n", err)
-		return http.StatusNoContent, fmt.Errorf("no such file or directory")
+		return http.StatusNoContent, err
 	case os.IsPermission(err):
 		log.Printf("failed to read file stat: %v\n", err)
-		return http.StatusForbidden, fmt.Errorf("permission denied")
+		return http.StatusForbidden, err
 	case stat.IsDir():
-		stats, _ := readdir(filename)
-		if err := respondWithJSON(w, stats); err != nil {
+		stats, _ := readdir(fullName)
+		fis := make([]*fileinfo, len(stats))
+		for i, stat := range stats {
+			fis[i] = &fileinfo{stat}
+		}
+		if err := respondWithJSON(w, fis); err != nil {
 			log.Printf("failed to marshal json: %v\n", err)
 			return http.StatusInternalServerError, fmt.Errorf("internal server error")
 		}
@@ -112,9 +109,9 @@ func (h handler) uploadHandler(w http.ResponseWriter, r *http.Request) (int, err
 		return http.StatusBadRequest, fmt.Errorf("invalid URL path")
 	}
 
-	filename := makeUnique(filepath.Join(h.root, filepath.FromSlash(r.URL.Path)))
+	fullName := makeUnique(filepath.Join(h.root, r.URL.Path))
 
-	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+	file, err := os.OpenFile(fullName, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
 	if err != nil {
 		log.Println("failed to create file: ", err)
 		return http.StatusInternalServerError, fmt.Errorf("internal server error")
@@ -130,28 +127,31 @@ func (h handler) uploadHandler(w http.ResponseWriter, r *http.Request) (int, err
 
 	switch err {
 	case nil:
-		dir, name := filepath.Split(filename)
+		dir, name := filepath.Split(fullName)
 		log.Printf("file \"%s\" received from %s and saved to \"%s\"\n", name, r.RemoteAddr, dir)
 		return http.StatusOK, nil
 	case context.Canceled, io.ErrUnexpectedEOF:
-		os.Remove(filename)
-		log.Printf("%s transfer is canceled: %v\n", filepath.Base(filename), err)
+		os.Remove(fullName)
+		log.Printf("%s transfer is canceled: %v\n", filepath.Base(fullName), err)
 		return http.StatusInternalServerError, fmt.Errorf("file transfer is canceled")
 	default:
-		os.Remove(filename)
+		os.Remove(fullName)
 		log.Println("failed to save file: ", err)
 		return http.StatusInternalServerError, fmt.Errorf("internal server error")
 	}
 }
 
-func (h handler) serveFile(w http.ResponseWriter, r *http.Request) {
-	filename := filepath.Join(h.root, filepath.FromSlash(r.URL.Path))
-	log.Printf("Client %s requested the file \"%s\"\n", r.RemoteAddr, filename)
-	if dir, err := isdir(filename); dir || err != nil {
-		http.Error(w, "no such file", http.StatusNoContent)
-		return
+// fileServer returns a HandlerFunc that serves HTTP requests with the files (and only files) of the file system rooted at root.
+func fileServer(root string) http.HandlerFunc {
+	root = filepath.Clean(root)
+	return func(w http.ResponseWriter, r *http.Request) {
+		fullName := filepath.Join(root, r.URL.Path)
+		if dir, err := isdir(fullName); dir || err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		http.ServeFile(w, r, fullName)
 	}
-	http.ServeFile(w, r, filename)
 }
 
 // push used for http/2 responses.
@@ -206,7 +206,7 @@ func (fi *fileinfo) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func readDirMap(dirname string, mapping func(fi os.FileInfo) bool) ([]*fileinfo, error) {
+func readDirMap(dirname string, mapping func(fi os.FileInfo) bool) ([]os.FileInfo, error) {
 	f, err := os.Open(dirname)
 	if err != nil {
 		return nil, err
@@ -218,26 +218,22 @@ func readDirMap(dirname string, mapping func(fi os.FileInfo) bool) ([]*fileinfo,
 		return nil, err
 	}
 
-	var fileInfoList []*fileinfo
-	for _, fi := range fis {
-		if mapping(fi) {
-			fileInfoList = append(fileInfoList, &fileinfo{fi})
-		}
-	}
+	fis = mapfis(mapping, fis)
 
-	sort.SliceStable(fileInfoList, func(i, j int) bool {
-		if fileInfoList[i].IsDir() && !fileInfoList[j].IsDir() {
+	sort.SliceStable(fis, func(i, j int) bool {
+		if fis[i].IsDir() && !fis[j].IsDir() {
 			return true
-		} else if !fileInfoList[i].IsDir() && fileInfoList[j].IsDir() {
+		} else if !fis[i].IsDir() && fis[j].IsDir() {
 			return false
 		}
-		return less(fileInfoList[i].Name(), fileInfoList[j].Name())
+		return less(fis[i].Name(), fis[j].Name())
 	})
 
-	return fileInfoList, nil
+	return fis, nil
+
 }
 
-func readdir(dirname string) ([]*fileinfo, error) {
+func readdir(dirname string) ([]os.FileInfo, error) {
 	return readDirMap(dirname, func(fi os.FileInfo) bool {
 		if len(fi.Name()) != 0 && fi.Name()[0] == '.' {
 			return false
@@ -247,6 +243,18 @@ func readdir(dirname string) ([]*fileinfo, error) {
 		}
 		return true
 	})
+}
+
+func mapfis(f func(fi os.FileInfo) bool, fis []os.FileInfo) []os.FileInfo {
+	b := make([]os.FileInfo, len(fis))
+	nfis := 0
+	for _, fi := range fis {
+		if f(fi) {
+			b[nfis] = fi
+			nfis++
+		}
+	}
+	return b[:nfis]
 }
 
 // less reports whether s1 should sort before s2.
